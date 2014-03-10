@@ -1,0 +1,4 @@
+﻿TODO:
+Gameplay
+Menus
+Make sure all jam requirements are met
