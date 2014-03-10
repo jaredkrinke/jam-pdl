@@ -3,54 +3,97 @@
 
 // N-dimensional array
 function NArray(dimensions) {
-    // TODO
+    this.dimensions = dimensions;
+    this.data = [];
 }
 
 // Arguments: value, x1, x2, x3, etc.
 NArray.prototype.set = function () {
-    // TODO
+    var value = arguments[0];
+    var dimensions = this.dimensions;
+    var d = this.data;
+    for (var i = 0; i < dimensions; i++) {
+        var x = arguments[i + 1];
+        if (i === dimensions - 1) {
+            d[x] = value;
+            break;
+        } else if (!d[x]) {
+            d[x] = [];
+        }
+        d = d[x];
+    }
 };
 
 // Arguments: x1, x2, x3, etc.
 NArray.prototype.get = function () {
-    // TODO
+    var dimensions = this.dimensions;
+    var d = this.data;
+    for (var i = 0; i < dimensions; i++) {
+        var x = arguments[i];
+        d = d[x];
+        if (!d) {
+            break;
+        }
+    }
+    return d;
 };
 
 // Arguments: x1, x2, x3, etc.
 NArray.prototype.remove = function () {
-    // TODO
+    var dimensions = this.dimensions;
+    var d = this.data;
+    for (var i = 0; i < dimensions; i++) {
+        var x = arguments[i];
+        if (i === dimensions - 1) {
+            d[x] = null;
+            break;
+        }
+
+        d = d[x];
+        if (!d) {
+            break;
+        }
+    }
 };
 
 NArray.prototype.clear = function () {
-    // TODO
+    this.data.length = 0;
 };
 
 function VectorSet(dimensions) {
-    // TODO
+    this.data = new NArray(dimensions);
+    this.list = [];
 }
 
+// Arguments: x1, x2, x3, etc.
 VectorSet.prototype.add = function () {
-    // TODO
+    this.data.set.apply(this.data, Array.concat([true], arguments));
+    this.list.push(Array.prototype.slice.call(arguments, 0));
 };
 
+// Arguments: x1, x2, x3, etc.
 VectorSet.prototype.removeIndex = function (index) {
-    // TODO
+    this.data.remove.apply(this.data, this.list[index]);
+    return this.list.splice(index, 1);
 };
 
-VectorSet.prototype.removeRandom = function (index) {
-    // TODO
+VectorSet.prototype.removeRandom = function () {
+    var index = Math.floor(Math.random() * this.list.length);
+    return this.removeIndex(index);
 };
 
-VectorSet.prototype.contains = function (index) {
-    // TODO
+// Arguments: x1, x2, x3, etc.
+VectorSet.prototype.contains = function () {
+    return this.data.get(arguments);
 };
 
-VectorSet.prototype.getCount = function (index) {
-    // TODO
+VectorSet.prototype.getCount = function () {
+    return this.list.length;
 };
 
-VectorSet.prototype.clear = function (index) {
-    // TODO
+VectorSet.prototype.clear = function () {
+    this.data.clear();
+    this.list.length = 0;
 };
 
 function GameLayer() {
