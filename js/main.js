@@ -169,8 +169,33 @@ World.prototype.ensureSquare = function (x, y) {
     }
 };
 
-// TODO: checkWallRemovable
-// TODO: annexSquare
+World.prototype.checkWallRemovable = function (axis, x, y) {
+    var x1 = this.x1 - 1;
+    var y1 = this.y1 - 1;
+    var y2 = this.y2;
+
+    if (axis === 1) {
+        return x >= x1 && y > y1 && y < y2;
+    } else
+    {
+        return x > x1 && y >= y1 && y <= y2;
+    }
+};
+
+World.prototype.annexSquare = function (x, y) {
+    var i = 1;
+
+    this.squaresUsed.add(x, y);
+    this.ensureSquare(x, y);
+    this.forEachSquareWall(x, y, function (axis, wallX, wallY) {
+        if (!this.wallsConsidered.contains(axis, wallX, wallY)
+            && !this.wallsAvailable.contains(axis, wallX, wallY)
+            && this.checkWallRemovable(axis, wallX, wallY)) {
+            this.wallsAvailable.add(axis, wallX, wallY);
+        }
+    });
+};
+
 // TODO: removeWall
 // TODO: carve
 // TODO: ensureWallConsidered
