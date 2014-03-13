@@ -196,12 +196,65 @@ World.prototype.annexSquare = function (x, y) {
     });
 };
 
-// TODO: removeWall
-// TODO: carve
-// TODO: ensureWallConsidered
-// TODO: ensureColumnComplete
-// TODO: ensureColumnsComplete
-// TODO: checkMove
+World.prototype.removeWall = function (axis, x, y) {
+    this.walls.set(false, axis, x, y);
+};
+
+World.prototype.carve = function () {
+    var carved = false;
+
+    while (!carved && this.wallsAvailable.getCount()) {
+        var position = this.wallsAvailable.removeRandom();
+        var axis = position[0];
+        var wallX = position[1];
+        var wallY = position[2];
+        var offsets = World.offsetWalls[axis];
+
+        this.wallsConsidered.add(axis, wallX, wallY);
+
+        var count = offsets.length;
+        for (var i = 0; i < count; i++) {
+            var offset = offsets[i];
+            var x = wallX + offset[0];
+            var y = wallY + offset[1];
+
+            if (!this.squaresUsed.contains(x, y)) {
+                this.removeWall(axis, wallX, wallY);
+                this.annexSquare(x, y);
+                carved = true;
+            }
+        }
+    }
+};
+
+World.prototype.ensureWallConsidered = function (axis, wallX, wallY) {
+    while (!this.wallsConsidered.contains(axis, wallX, wallY)) {
+        this.carve();
+    }
+};
+
+World.prototype.ensureColumnComplete = function (x) {
+    for (var y = this.y1; y <= this.y2, y++) {
+        this.ensureSquare(x, y);
+        this.forEachSquareWall(x, y, function (axis, wallX, wallY) {
+            if (this.checkWallRemovable(axis, wallX, wallY)) {
+                this.ensureWallConsidered(axis, wallX, wallY);
+            }
+        });
+    }
+};
+
+World.prototype.checkMove = function (x, y, direction) {
+    var axis = wallAxes[direction];
+    var wallOffset = World.offsetWalls[direction];
+    var wallX = x + wallOffset[0];
+    var wallY = y + wallOffset[1];
+
+    if (this.walls.get(axis, wallX, wallY)) {
+        return false;
+    }
+    return true;
+};
 
 function GameLayer() {
     Layer.call(this);
