@@ -67,14 +67,16 @@ function VectorSet(dimensions) {
 
 // Arguments: x1, x2, x3, etc.
 VectorSet.prototype.add = function () {
-    this.data.set.apply(this.data, Array.concat([true], arguments));
+    var a = Array.prototype.slice.call(arguments, 0);
+    a.unshift(true);
+    this.data.set.apply(this.data, a);
     this.list.push(Array.prototype.slice.call(arguments, 0));
 };
 
 // Arguments: x1, x2, x3, etc.
 VectorSet.prototype.removeIndex = function (index) {
     this.data.remove.apply(this.data, this.list[index]);
-    return this.list.splice(index, 1);
+    return this.list.splice(index, 1)[0];
 };
 
 VectorSet.prototype.removeRandom = function () {
@@ -100,16 +102,16 @@ function World() {
     Entity.call(this);
 
     // Bounds (inclusive, note that there is no limit to the right)
-    this.x1 = 0;
-    this.y1 = -4;
-    this.y2 = 4;
+    this.x1 = 1;
+    this.y1 = 1;
+    this.y2 = 9;
 
     var minColumns = 32;
     this.lastColumn = 0;
 
     // World contents
-    this.walls = new Vector(3);
-    this.squares = new Vector(2);
+    this.walls = new NArray(3);
+    this.squares = new NArray(2);
 
     // World state
     this.squaresUsed = new VectorSet(2);
@@ -118,17 +120,15 @@ function World() {
 
     // Events
     this.changed = new Event();
-
-    // Constants
-    var wallOffsets = [
-        [[0, 0], [0, 1]],
-        [[0, 0], [1, 0]],
-    ];
 }
 
 World.prototype = Object.create(Entity.prototype);
 World.offsetWalls = [[-1, 0], [0, 0], [0, 0], [0, -1]];
-World.wallAxes = [2, 2, 1, 1];
+World.wallAxes = [1, 1, 0, 0];
+World.wallOffsets = [
+    [[0, 0], [0, 1]],
+    [[0, 0], [1, 0]],
+];
 
 World.prototype.reset = function () {
     this.lastColumn = 0;
@@ -140,7 +140,7 @@ World.prototype.reset = function () {
     this.wallsConsidered.clear();
 
     this.annexSquare(0, 0);
-    this.ensureColumnsComplete(0);
+    this.ensureColumnComplete(0);
 };
 
 World.prototype.forEachSquareWall = function (x, y, f) {
@@ -174,7 +174,7 @@ World.prototype.checkWallRemovable = function (axis, x, y) {
     var y1 = this.y1 - 1;
     var y2 = this.y2;
 
-    if (axis === 1) {
+    if (axis === 0) {
         return x >= x1 && y > y1 && y < y2;
     } else
     {
@@ -183,8 +183,6 @@ World.prototype.checkWallRemovable = function (axis, x, y) {
 };
 
 World.prototype.annexSquare = function (x, y) {
-    var i = 1;
-
     this.squaresUsed.add(x, y);
     this.ensureSquare(x, y);
     this.forEachSquareWall(x, y, function (axis, wallX, wallY) {
@@ -208,7 +206,7 @@ World.prototype.carve = function () {
         var axis = position[0];
         var wallX = position[1];
         var wallY = position[2];
-        var offsets = World.offsetWalls[axis];
+        var offsets = World.wallOffsets[axis];
 
         this.wallsConsidered.add(axis, wallX, wallY);
 
@@ -234,7 +232,7 @@ World.prototype.ensureWallConsidered = function (axis, wallX, wallY) {
 };
 
 World.prototype.ensureColumnComplete = function (x) {
-    for (var y = this.y1; y <= this.y2, y++) {
+    for (var y = this.y1; y <= this.y2; y++) {
         this.ensureSquare(x, y);
         this.forEachSquareWall(x, y, function (axis, wallX, wallY) {
             if (this.checkWallRemovable(axis, wallX, wallY)) {
@@ -259,7 +257,7 @@ World.prototype.checkMove = function (x, y, direction) {
 function Display(world) {
     this.rows = world.y2 - world.y1 + 1;
     this.columns = 640 / Display.squareSize;
-    Entity.call(this, (-this.columns / 2 + 0.5) * Display.squareSize, (-rows / 2 + 0.5) * Display.squareSize, Display.squareSize, Display.squareSize);
+    Entity.call(this, (-this.columns / 2 + 0.5) * Display.squareSize, (-this.rows / 2 + 0.5) * Display.squareSize, Display.squareSize, Display.squareSize);
 
     this.viewportChanged = new Event();
 
@@ -276,15 +274,15 @@ function Display(world) {
             this.walls[axis][x] = [];
         }
 
-        if (axis === 1) {
-            this.walls[1][x][y] = wallsEntity.elements.push(new Rectangle(x, y + 0.5, 1, Display.wallSizeRelative));
+        if (axis === 0) {
+            this.walls[0][x][y] = this.wallsEntity.elements.push(new Rectangle(x, y + 0.5, 1, Display.wallSizeRelative));
         } else {
-            this.walls[2][x][y] = wallsEntity.elements.push(new Rectangle(x + 0.5, y, Display.wallSizeRelative, 1));
+            this.walls[1][x][y] = this.wallsEntity.elements.push(new Rectangle(x + 0.5, y, Display.wallSizeRelative, 1));
         }
     }, this);
 
     var display = this;
-    world.changed.addEventListener(function () {
+    world.changed.addListener(function () {
         display.updateWalls();
     });
 
@@ -311,15 +309,15 @@ Display.prototype.reset = function () {
 
 Display.prototype.forEachWall = function (f, that) {
     var columnCount = this.columns;
-    for (var x = -1; x < columnCount; x++) {
+    for (var x = 0; x <= columnCount; x++) {
         var rowCount = this.rows;
-        for (var y = -1; y < rowCount; y++) {
-            if (x > -1) {
-                f.call(that, 1, x, y);
+        for (var y = 0; y <= rowCount; y++) {
+            if (x > 0) {
+                f.call(that, 0, x, y);
             }
 
-            if (y > -1) {
-                f.call(that, 2, x, y);
+            if (y > 0) {
+                f.call(that, 1, x, y);
             }
         }
     }
@@ -344,6 +342,7 @@ function GameLayer() {
 
     this.addEntity(this.world = new World());
     this.addEntity(this.display = new Display(this.world));
+    this.reset();
 }
 
 GameLayer.prototype = Object.create(Layer.prototype);
