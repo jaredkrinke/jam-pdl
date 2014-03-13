@@ -86,7 +86,7 @@ VectorSet.prototype.removeRandom = function () {
 
 // Arguments: x1, x2, x3, etc.
 VectorSet.prototype.contains = function () {
-    return this.data.get(arguments);
+    return this.data.get.apply(this.data, arguments);
 };
 
 VectorSet.prototype.getCount = function () {
@@ -106,8 +106,7 @@ function World() {
     this.y1 = 1;
     this.y2 = 9;
 
-    var minColumns = 32;
-    this.lastColumn = 0;
+    this.lastColumn = this.x1;
 
     // World contents
     this.walls = new NArray(3);
@@ -123,6 +122,7 @@ function World() {
 }
 
 World.prototype = Object.create(Entity.prototype);
+World.minColumns = 32;
 World.offsetWalls = [[-1, 0], [0, 0], [0, 0], [0, -1]];
 World.wallAxes = [1, 1, 0, 0];
 World.wallOffsets = [
@@ -131,7 +131,7 @@ World.wallOffsets = [
 ];
 
 World.prototype.reset = function () {
-    this.lastColumn = 0;
+    this.lastColumn = 1;
     this.walls.clear();
     this.squares.clear();
 
@@ -139,8 +139,8 @@ World.prototype.reset = function () {
     this.wallsAvailable.clear();
     this.wallsConsidered.clear();
 
-    this.annexSquare(0, 0);
-    this.ensureColumnComplete(0);
+    this.annexSquare(1, 1);
+    this.ensureColumnsComplete(1);
 };
 
 World.prototype.forEachSquareWall = function (x, y, f) {
@@ -226,10 +226,9 @@ World.prototype.carve = function () {
 };
 
 World.prototype.ensureWallConsidered = function (axis, wallX, wallY) {
-    // TODO
-    //while (!this.wallsConsidered.contains(axis, wallX, wallY)) {
-    //    this.carve();
-    //}
+    while (!this.wallsConsidered.contains(axis, wallX, wallY)) {
+        this.carve();
+    }
 };
 
 World.prototype.ensureColumnComplete = function (x) {
@@ -241,6 +240,16 @@ World.prototype.ensureColumnComplete = function (x) {
             }
         });
     }
+};
+
+World.prototype.ensureColumnsComplete = function (x1) {
+    var x2 = x1 + World.minColumns;
+    while (this.lastColumn <= x2) {
+        this.ensureColumnComplete(this.lastColumn);
+        this.lastColumn++;
+    }
+
+    this.changed.fire();
 };
 
 World.prototype.checkMove = function (x, y, direction) {
@@ -261,7 +270,10 @@ function Display(world) {
     this.columns = 640 / Display.squareSize;
     Entity.call(this, (-this.columns / 2 + 0.5) * Display.squareSize, (-this.rows / 2 + 0.5) * Display.squareSize, Display.squareSize, Display.squareSize);
 
+    // Viewport
     this.viewportChanged = new Event();
+    this.vx1 = 1;
+    this.vy1 = this.world.y1;
 
     // Walls
     this.walls = [[], []];
@@ -273,9 +285,9 @@ function Display(world) {
         }
 
         if (axis === 0) {
-            this.walls[0][x][y] = this.wallsEntity.elements.push(new Rectangle(x - 1, y + 0.5, 1, Display.wallSizeRelative));
+            this.wallsEntity.elements.push(this.walls[0][x][y] = new Rectangle(x - 1, y + 0.5, 1, Display.wallSizeRelative));
         } else {
-            this.walls[1][x][y] = this.wallsEntity.elements.push(new Rectangle(x - 0.5, y, Display.wallSizeRelative, 1));
+            this.wallsEntity.elements.push(this.walls[1][x][y] = new Rectangle(x - 0.5, y, Display.wallSizeRelative, 1));
         }
     }, this);
 
