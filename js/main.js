@@ -256,11 +256,104 @@ World.prototype.checkMove = function (x, y, direction) {
     return true;
 };
 
+function Display(world) {
+    this.rows = world.y2 - world.y1 + 1;
+    this.columns = 640 / Display.squareSize;
+    Entity.call(this, (-this.columns / 2 + 0.5) * Display.squareSize, (-rows / 2 + 0.5) * Display.squareSize, Display.squareSize, Display.squareSize);
+
+    this.viewportChanged = new Event();
+
+    // Viewport
+    this.vx1 = 0;
+    this.vy1 = world.y1;
+
+    // Walls
+    this.walls = [[], []];
+    this.wallsEntity = new Entity();
+    this.wallsEntity.elements = [];
+    this.forEachWall(function (axis, x, y) {
+        if (!this.walls[axis][x]) {
+            this.walls[axis][x] = [];
+        }
+
+        if (axis === 1) {
+            this.walls[1][x][y] = wallsEntity.elements.push(new Rectangle(x, y + 0.5, 1, Display.wallSizeRelative));
+        } else {
+            this.walls[2][x][y] = wallsEntity.elements.push(new Rectangle(x + 0.5, y, Display.wallSizeRelative, 1));
+        }
+    }, this);
+
+    var display = this;
+    world.changed.addEventListener(function () {
+        display.updateWalls();
+    });
+
+    // TODO: Ender
+    // TODO: Player
+    // TODO: Background
+    // TODO: End effect
+}
+
+Display.squareSize = 20;
+Display.wallSizeRelative = 0.125;
+Display.prototype = Object.create(Entity.prototype);
+
+Display.prototype.reset = function () {
+    this.clearChildren();
+    this.addChild(this.wallsEntity);
+    // TODO: Ender, player, background
+
+    this.vx1 = 0;
+    this.vy1 = world.y1;
+    this.updateWalls();
+    // TODO: Update player and background positions
+};
+
+Display.prototype.forEachWall = function (f, that) {
+    var columnCount = this.columns;
+    for (var x = -1; x < columnCount; x++) {
+        var rowCount = this.rows;
+        for (var y = -1; y < rowCount; y++) {
+            if (x > -1) {
+                f.call(that, 1, x, y);
+            }
+
+            if (y > -1) {
+                f.call(that, 2, x, y);
+            }
+        }
+    }
+};
+
+Display.prototype.updateWalls = function () {
+    this.forEachWall(function (axis, x, y) {
+        var wallElement = this.walls[axis][x][y];
+        if (world.walls.get(axis, x + this.vx1, y + vy1)) {
+            wallElement.opacity = 1;
+        } else {
+            wallElement.opacity = 0;
+        }
+    }, this);
+};
+
 function GameLayer() {
     Layer.call(this);
+    this.paused = false;
+
+    // TODO: Controls, end game, other entities
+
+    this.addEntity(this.world = new World());
+    this.addEntity(this.display = new Display(this.world));
 }
 
 GameLayer.prototype = Object.create(Layer.prototype);
+
+GameLayer.prototype.reset = function () {
+    this.paused = false;
+    this.world.reset();
+    this.display.reset();
+    // TODO: Reset other stuff as it's added
+};
 
 window.addEventListener('DOMContentLoaded', function () {
     Radius.initialize(document.getElementById('canvas'));
