@@ -263,10 +263,6 @@ function Display(world) {
 
     this.viewportChanged = new Event();
 
-    // Viewport
-    this.vx1 = 0;
-    this.vy1 = world.y1;
-
     // Walls
     this.walls = [[], []];
     this.wallsEntity = new Entity();
@@ -277,9 +273,9 @@ function Display(world) {
         }
 
         if (axis === 0) {
-            this.walls[0][x][y] = this.wallsEntity.elements.push(new Rectangle(x, y + 0.5, 1, Display.wallSizeRelative));
+            this.walls[0][x][y] = this.wallsEntity.elements.push(new Rectangle(x - 1, y + 0.5, 1, Display.wallSizeRelative));
         } else {
-            this.walls[1][x][y] = this.wallsEntity.elements.push(new Rectangle(x + 0.5, y, Display.wallSizeRelative, 1));
+            this.walls[1][x][y] = this.wallsEntity.elements.push(new Rectangle(x - 0.5, y, Display.wallSizeRelative, 1));
         }
     }, this);
 
@@ -303,7 +299,7 @@ Display.prototype.reset = function () {
     this.addChild(this.wallsEntity);
     // TODO: Ender, player, background
 
-    this.vx1 = 0;
+    this.vx1 = 1;
     this.vy1 = this.world.y1;
     this.updateWalls();
     // TODO: Update player and background positions
