@@ -156,7 +156,7 @@ World.prototype.forEachSquareWall = function (x, y, f) {
 
 World.prototype.ensureWalls = function (x, y) {
     this.forEachSquareWall(x, y, function (axis, x, y, direction) {
-        if (!this.walls.get(x, y)) {
+        if (this.walls.get(axis, x, y) === undefined) {
             this.walls.set(true, axis, x, y);
         }
     });
@@ -272,8 +272,8 @@ function Display(world) {
 
     // Viewport
     this.viewportChanged = new Event();
-    this.vx1 = 1;
-    this.vy1 = this.world.y1;
+    this.vx1 = 0;
+    this.vy1 = 0;
 
     // Walls
     this.walls = [[], []];
@@ -285,9 +285,9 @@ function Display(world) {
         }
 
         if (axis === 0) {
-            this.wallsEntity.elements.push(this.walls[0][x][y] = new Rectangle(x - 1, y + 0.5, 1, Display.wallSizeRelative));
+            this.wallsEntity.elements.push(this.walls[0][x][y] = new Rectangle(x - 1, y - 0.5, 1, Display.wallSizeRelative));
         } else {
-            this.wallsEntity.elements.push(this.walls[1][x][y] = new Rectangle(x - 0.5, y, Display.wallSizeRelative, 1));
+            this.wallsEntity.elements.push(this.walls[1][x][y] = new Rectangle(x - 0.5, y - 1, Display.wallSizeRelative, 1));
         }
     }, this);
 
@@ -311,8 +311,8 @@ Display.prototype.reset = function () {
     this.addChild(this.wallsEntity);
     // TODO: Ender, player, background
 
-    this.vx1 = 1;
-    this.vy1 = this.world.y1;
+    this.vx1 = 0;
+    this.vy1 = 0;
     this.updateWalls();
     // TODO: Update player and background positions
 };
