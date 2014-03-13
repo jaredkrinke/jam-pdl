@@ -226,9 +226,10 @@ World.prototype.carve = function () {
 };
 
 World.prototype.ensureWallConsidered = function (axis, wallX, wallY) {
-    while (!this.wallsConsidered.contains(axis, wallX, wallY)) {
-        this.carve();
-    }
+    // TODO
+    //while (!this.wallsConsidered.contains(axis, wallX, wallY)) {
+    //    this.carve();
+    //}
 };
 
 World.prototype.ensureColumnComplete = function (x) {
@@ -255,6 +256,7 @@ World.prototype.checkMove = function (x, y, direction) {
 };
 
 function Display(world) {
+    this.world = world;
     this.rows = world.y2 - world.y1 + 1;
     this.columns = 640 / Display.squareSize;
     Entity.call(this, (-this.columns / 2 + 0.5) * Display.squareSize, (-this.rows / 2 + 0.5) * Display.squareSize, Display.squareSize, Display.squareSize);
@@ -302,7 +304,7 @@ Display.prototype.reset = function () {
     // TODO: Ender, player, background
 
     this.vx1 = 0;
-    this.vy1 = world.y1;
+    this.vy1 = this.world.y1;
     this.updateWalls();
     // TODO: Update player and background positions
 };
@@ -326,7 +328,7 @@ Display.prototype.forEachWall = function (f, that) {
 Display.prototype.updateWalls = function () {
     this.forEachWall(function (axis, x, y) {
         var wallElement = this.walls[axis][x][y];
-        if (world.walls.get(axis, x + this.vx1, y + vy1)) {
+        if (this.world.walls.get(axis, x + this.vx1, y + this.vy1)) {
             wallElement.opacity = 1;
         } else {
             wallElement.opacity = 0;
