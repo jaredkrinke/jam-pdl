@@ -183,9 +183,9 @@ function World() {
     Entity.call(this);
 
     // Bounds (inclusive, note that there is no limit to the right)
-    this.x1 = 1;
-    this.y1 = 1;
-    this.y2 = 9;
+    this.x1 = 0;
+    this.y1 = 0;
+    this.y2 = 8;
 
     this.lastColumn = this.x1;
 
@@ -220,7 +220,7 @@ World.prototype.reset = function () {
     this.wallsAvailable.clear();
     this.wallsConsidered.clear();
 
-    this.annexSquare(1, 1);
+    this.annexSquare(0, 0);
     this.ensureColumnsComplete(1);
 };
 
@@ -366,9 +366,9 @@ function Display(world, player) {
         }
 
         if (axis === 0) {
-            this.wallsEntity.elements.push(this.walls[0][x][y] = new Rectangle(x - 1, y - 0.5, 1, Display.wallSizeRelative));
+            this.wallsEntity.elements.push(this.walls[0][x][y] = new Rectangle(x, y + 0.5, 1, Display.wallSizeRelative));
         } else {
-            this.wallsEntity.elements.push(this.walls[1][x][y] = new Rectangle(x - 0.5, y - 1, Display.wallSizeRelative, 1));
+            this.wallsEntity.elements.push(this.walls[1][x][y] = new Rectangle(x + 0.5, y, Display.wallSizeRelative, 1));
         }
     }, this);
 
@@ -431,14 +431,14 @@ Display.prototype.reset = function () {
 
 Display.prototype.forEachWall = function (f, that) {
     var columnCount = this.columns;
-    for (var x = 0; x <= columnCount; x++) {
+    for (var x = -1; x < columnCount; x++) {
         var rowCount = this.rows;
-        for (var y = 0; y <= rowCount; y++) {
-            if (x > 0) {
+        for (var y = -1; y < rowCount; y++) {
+            if (x > -1) {
                 f.call(that, 0, x, y);
             }
 
-            if (y > 0) {
+            if (y > -1) {
                 f.call(that, 1, x, y);
             }
         }
