@@ -168,10 +168,18 @@ Player.prototype.update = function (ms) {
         this.moveTimer -= ms;
 
         while (this.moveTimer <= 0) {
-            // Move the most recent possible direction
+            // Move the most recent possible non-conflicting direction
             var moved = false;
+            var triedHorizontal = false;
+            var triedVertical = false;
             for (var i = this.directionsPressed.length - 1; !moved && i >= 0; i--) {
-                moved = this.move(this.directionsPressed[i]);
+                var direction = this.directionsPressed[i];
+                var offsets = Constants.directions[direction];
+                if ((!triedHorizontal && !offsets[0]) || (!triedVertical && !offsets[1])) {
+                    moved = this.move(this.directionsPressed[i]);
+                    triedHorizontal = triedHorizontal || offsets[0];
+                    triedVertical = triedVertical || offsets[1];
+                }
             }
 
             this.moveTimer += Player.movePeriod;
