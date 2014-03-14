@@ -355,6 +355,7 @@ World.prototype.checkMove = function (x, y, direction) {
 
 function Display(world, player) {
     this.world = world;
+    this.player = player;
     this.rows = world.y2 - world.y1 + 1;
     this.columns = 640 / Display.squareSize;
     Entity.call(this, (-this.columns / 2 + 0.5) * Display.squareSize, (-this.rows / 2 + 0.5) * Display.squareSize, Display.squareSize, Display.squareSize);
@@ -389,7 +390,7 @@ function Display(world, player) {
     this.playerEntity = new Entity();
     this.playerEntity.elements = [new Rectangle(0, 0, Display.playerSizeRelative, Display.playerSizeRelative, 'red')];
     var centerThreshold = Math.floor(this.columns / 12);
-    player.moved.addListener(function (x, y) {
+    this.playerMoved = function (x, y) {
         // Center the view
         var center = Math.floor(display.columns / 2);
         var centerX = center + display.vx1;
@@ -413,7 +414,8 @@ function Display(world, player) {
         // Update the player element
         display.playerEntity.x = x - display.vx1;
         display.playerEntity.y = y - display.vy1;
-    });
+    };
+    player.moved.addListener(this.playerMoved);
 
     // TODO: Ender
     // TODO: Background
@@ -434,6 +436,7 @@ Display.prototype.reset = function () {
     this.vx1 = 0;
     this.vy1 = 0;
     this.updateWalls();
+    this.playerMoved(this.player.x, this.player.y);
     // TODO: Update player and background positions
 };
 
