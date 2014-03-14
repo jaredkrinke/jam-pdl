@@ -187,6 +187,31 @@ Player.prototype.update = function (ms) {
     }
 };
 
+function Ender() {
+    Entity.call(this, Ender.startX);
+    this.moved = new Event();
+    this.reset();
+}
+
+Ender.startX = -14;
+Ender.initialMovePeriod = 600;
+Ender.prototype = Object.create(Entity.prototype);
+
+Ender.prototype.reset = function () {
+    this.x = Ender.startX;
+    this.movePeriod = Ender.initialMovePeriod;
+    this.moveTimer = this.movePeriod;
+};
+
+Ender.prototype.update = function (ms) {
+    this.moveTimer -= ms;
+    while (this.moveTimer <= 0) {
+        this.x++;
+        this.moved.fire(this.x);
+        this.moveTimer += this.movePeriod;
+    }
+};
+
 function World() {
     Entity.call(this);
 
@@ -353,7 +378,7 @@ World.prototype.checkMove = function (x, y, direction) {
     return true;
 };
 
-function Display(world, player) {
+function Display(world, player, ender) {
     this.world = world;
     this.player = player;
     this.rows = world.y2 - world.y1 + 1;
@@ -375,9 +400,9 @@ function Display(world, player) {
         }
 
         if (axis === 0) {
-            this.wallsEntity.elements.push(this.walls[0][x][y] = new Rectangle(x, y + 0.5, 1, Display.wallSizeRelative));
+            this.wallsEntity.elements.push(this.walls[0][x][y] = new Rectangle(x, y + 0.5, 1, Display.wallSizeRelative, 'white'));
         } else {
-            this.wallsEntity.elements.push(this.walls[1][x][y] = new Rectangle(x + 0.5, y, Display.wallSizeRelative, 1));
+            this.wallsEntity.elements.push(this.walls[1][x][y] = new Rectangle(x + 0.5, y, Display.wallSizeRelative, 1, 'white'));
         }
     }, this);
 
@@ -386,9 +411,22 @@ function Display(world, player) {
         display.updateWalls();
     });
 
+    // Ender
+    this.enderEntity = new Entity(0, this.rows / 2 - 0.5, 2);
+    this.enderEntity.opacity = 0.8;
+    this.enderEntity.elements = [new Rectangle(0, 0, 1, this.rows, 'red')];
+    this.updateEnder = function () {
+        display.enderEntity.x = ender.x - display.vx1;
+    };
+    ender.moved.addListener(function () {
+        display.updateEnder();
+
+        // TODO: Sound
+    });
+
     // Player
     this.playerEntity = new Entity();
-    this.playerEntity.elements = [new Rectangle(0, 0, Display.playerSizeRelative, Display.playerSizeRelative, 'red')];
+    this.playerEntity.elements = [new Rectangle(0, 0, Display.playerSizeRelative, Display.playerSizeRelative, 'white')];
     var centerThreshold = Math.floor(this.columns / 12);
     this.playerMoved = function (x, y) {
         // Center the view
@@ -406,7 +444,7 @@ function Display(world, player) {
 
         if (viewportChanged) {
             display.updateWalls();
-            // TODO: Ender
+            display.updateEnder();
             // TODO: Viewport updates?
             //display.viewportChanged.fire(display.getViewport());
         }
@@ -417,7 +455,6 @@ function Display(world, player) {
     };
     player.moved.addListener(this.playerMoved);
 
-    // TODO: Ender
     // TODO: Background
     // TODO: End effect
 }
@@ -431,6 +468,7 @@ Display.prototype.reset = function () {
     this.clearChildren();
     this.addChild(this.wallsEntity);
     this.addChild(this.playerEntity);
+    this.addChild(this.enderEntity);
     // TODO: Ender, player, background
 
     this.vx1 = 0;
@@ -476,7 +514,8 @@ function GameLayer() {
 
     this.addEntity(this.world = new World());
     this.addEntity(this.player = new Player(this.world));
-    this.addEntity(this.display = new Display(this.world, this.player));
+    this.addEntity(this.ender = new Ender());
+    this.addEntity(this.display = new Display(this.world, this.player, this.ender));
     this.reset();
 
     // Controls
@@ -506,6 +545,7 @@ GameLayer.prototype.reset = function () {
     this.world.reset();
     this.display.reset();
     this.player.reset();
+    this.ender.reset();
     // TODO: Reset other stuff as it's added
 };
 
