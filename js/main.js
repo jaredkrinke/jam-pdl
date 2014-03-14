@@ -1,6 +1,11 @@
 ﻿/// <reference path="radius.js" />
 /// <reference path="radius-ui.js" />
 
+Constants = {
+    directions: [[-1, 0], [1, 0], [0, 1], [0, -1]],
+    directionValues: { left: 0, right: 1, up: 2, down: 3 },
+};
+
 // N-dimensional array
 function NArray(dimensions) {
     this.dimensions = dimensions;
@@ -96,6 +101,82 @@ VectorSet.prototype.getCount = function () {
 VectorSet.prototype.clear = function () {
     this.data.clear();
     this.list.length = 0;
+};
+
+function Player(world) {
+    Entity.call(this);
+    this.world = world;
+    this.directionsPressed = [];
+    this.moveTimer = 0;
+    this.active = true;
+
+    this.moved = new Event();
+}
+
+Player.movePeriod = 150;
+Player.moveChargePeriod = 200;
+Player.prototype = Object.create(Entity.prototype);
+
+Player.prototype.reset = function () {
+    this.directionsPressed.length = 0;
+    this.moveTimer = 0;
+    this.active = true;
+    this.x = 0;
+    this.y = 0;
+};
+
+Player.prototype.move = function (direction) {
+    if (this.active) {
+        var offsets = Constants.directions[direction];
+        if (this.world.checkMove(this.x, this.y, direction)) {
+            this.x += offsets[0];
+            this.y += offsets[1];
+            this.world.ensureColumnsComplete(this.x);
+            this.moved.fire(this.x, this.y);
+            return true;
+        }
+    }
+
+    return false;
+};
+
+Player.prototype.checkAnyDirectionPressed = function () {
+    return this.directionsPressed.length > 0;
+};
+
+Player.prototype.directionPressed = function (direction, pressed) {
+    if (pressed) {
+        // Move immediately and start charging for automatic moves
+        this.move(direction);
+        this.moveTimer = Player.moveChargePeriod;
+
+        // Push this onto the top of the direction stack
+        this.directionsPressed.push(direction);
+    } else {
+        // Remove all entries for this direction
+        do {
+            var index = this.directionsPressed.indexOf(direction);
+            if (index !== -1) {
+                this.directionsPressed.splice(index, 1);
+            }
+        } while (index !== -1);
+    }
+};
+
+Player.prototype.update = function (ms) {
+    if (this.active && this.checkAnyDirectionPressed()) {
+        this.moveTimer -= ms;
+
+        while (this.moveTimer <= 0) {
+            // Move the most recent possible direction
+            var moved = false;
+            for (var i = this.directionsPressed.length - 1; !moved && i >= 0; i--) {
+                moved = this.move(this.directionsPressed[i]);
+            }
+
+            this.moveTimer += Player.movePeriod;
+        }
+    }
 };
 
 function World() {
@@ -253,7 +334,7 @@ World.prototype.ensureColumnsComplete = function (x1) {
 };
 
 World.prototype.checkMove = function (x, y, direction) {
-    var axis = wallAxes[direction];
+    var axis = World.wallAxes[direction];
     var wallOffset = World.offsetWalls[direction];
     var wallX = x + wallOffset[0];
     var wallY = y + wallOffset[1];
@@ -264,7 +345,7 @@ World.prototype.checkMove = function (x, y, direction) {
     return true;
 };
 
-function Display(world) {
+function Display(world, player) {
     this.world = world;
     this.rows = world.y2 - world.y1 + 1;
     this.columns = 640 / Display.squareSize;
@@ -296,19 +377,50 @@ function Display(world) {
         display.updateWalls();
     });
 
+    // Player
+    this.playerEntity = new Entity();
+    this.playerEntity.elements = [new Rectangle(0, 0, Display.playerSizeRelative, Display.playerSizeRelative, 'red')];
+    var centerThreshold = Math.floor(this.columns / 12);
+    player.moved.addListener(function (x, y) {
+        // Center the view
+        var center = Math.floor(display.columns / 2);
+        var centerX = center + display.vx1;
+        var viewportChanged = false;
+
+        if (centerX - player.x > centerThreshold) {
+            display.vx1 = centerThreshold + player.x - center;
+            viewportChanged = true;
+        } else if (centerX - player.x < -centerThreshold) {
+            display.vx1 = -centerThreshold + player.x - center;
+            viewportChanged = true;
+        }
+
+        if (viewportChanged) {
+            display.updateWalls();
+            // TODO: Ender
+            // TODO: Viewport updates?
+            //display.viewportChanged.fire(display.getViewport());
+        }
+
+        // Update the player element
+        display.playerEntity.x = x - display.vx1;
+        display.playerEntity.y = y - display.vy1;
+    });
+
     // TODO: Ender
-    // TODO: Player
     // TODO: Background
     // TODO: End effect
 }
 
 Display.squareSize = 20;
 Display.wallSizeRelative = 0.125;
+Display.playerSizeRelative = 0.5;
 Display.prototype = Object.create(Entity.prototype);
 
 Display.prototype.reset = function () {
     this.clearChildren();
     this.addChild(this.wallsEntity);
+    this.addChild(this.playerEntity);
     // TODO: Ender, player, background
 
     this.vx1 = 0;
@@ -346,13 +458,34 @@ Display.prototype.updateWalls = function () {
 
 function GameLayer() {
     Layer.call(this);
-    this.paused = false;
+    var paused = false;
+    this.paused = paused;
 
-    // TODO: Controls, end game, other entities
+    // TODO: End game, other entities
 
     this.addEntity(this.world = new World());
-    this.addEntity(this.display = new Display(this.world));
+    this.addEntity(this.player = new Player(this.world));
+    this.addEntity(this.display = new Display(this.world, this.player));
     this.reset();
+
+    // Controls
+    var player = this.player;
+    var createDirectionHandler = function (directionName) {
+        return function (pressed) {
+            if (!paused) {
+                player.directionPressed(Constants.directionValues[directionName], pressed);
+            }
+        };
+    };
+
+    this.keyPressedHandlers = {
+        left: createDirectionHandler('left'),
+        right: createDirectionHandler('right'),
+        up: createDirectionHandler('up'),
+        down: createDirectionHandler('down'),
+
+        // TODO: enter/escape
+    };
 }
 
 GameLayer.prototype = Object.create(Layer.prototype);
@@ -361,6 +494,7 @@ GameLayer.prototype.reset = function () {
     this.paused = false;
     this.world.reset();
     this.display.reset();
+    this.player.reset();
     // TODO: Reset other stuff as it's added
 };
 
