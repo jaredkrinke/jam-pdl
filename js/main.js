@@ -471,20 +471,20 @@ function Info(manager) {
     Entity.call(this);
     this.levelLabel = new Text("", Info.font, -200, 90);
     this.scoreLabel = new Text("", Info.font, 200, 90, 'right');
-    // TODO: Does the title need to wrap?
     this.titleElement = new Text(Constants.title, Info.titleFont, 0, 200 - Title.textHeight, 'center');
 
-    // TODO: Emphasize effect
-    // TODO: Level up effect/sound
     var info = this;
     manager.levelChanged.addListener(function (level) {
         info.updateLevel(level);
+        // TODO: Sound
     });
     manager.scoreChanged.addListener(function (score) {
         info.updateScore(score);
     });
-
-    // TODO: Lost effect/sound
+    manager.lost.addListener(function () {
+        info.emphasizeElement(info.scoreLabel);
+        // TODO: Sound
+    });
 }
 
 Info.font = Label.font;
@@ -492,13 +492,31 @@ Info.titleFont = Title.font;
 Info.prototype = Object.create(Entity.prototype);
 
 Info.prototype.reset = function () {
+    this.clearChildren();
     this.elements = [this.levelLabel, this.scoreLabel, this.titleElement];
     this.updateLevel(0);
     this.updateScore(0);
 };
 
+Info.prototype.emphasizeElement = function (element) {
+    var textWidth = Radius.getTextWidth(element.font, element.text)
+    var x = element.x + textWidth / 2;
+    if (element.align === 'right') {
+        x = element.x - textWidth / 2;
+    }
+
+    var entity = new Entity(x, element.y + Label.textHeight / 4);
+    entity.elements = [new Text(element.text, element.font, -textWidth / 2, -Label.textHeight / 4)];
+    this.addChild(new Ghost(entity, 350, 1.5));
+};
+
 Info.prototype.updateLevel = function (level) {
     this.levelLabel.text = 'Level: ' + level;
+
+    // Level-up effect
+    if (level > 0) {
+            this.emphasizeElement(this.levelLabel);
+    }
 };
 
 Info.prototype.updateScore = function (score) {
@@ -587,7 +605,11 @@ function Display(world, player, ender, manager) {
     // End effect
     manager.lost.addListener(function () {
         display.removeChild(display.playerEntity);
-        // TODO: Ghost effect
+
+        // Ghost effect
+        var ghost;
+        display.addChild(ghost = new Ghost(display.playerEntity, 2500, 3));
+        ghost.elements[0].color = 'red';
     });
 }
 
