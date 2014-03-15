@@ -471,20 +471,20 @@ function Info(manager) {
     Entity.call(this);
     this.levelLabel = new Text("", Info.font, -200, 90);
     this.scoreLabel = new Text("", Info.font, 200, 90, 'right');
-    // TODO: Does the title need to wrap?
     this.titleElement = new Text(Constants.title, Info.titleFont, 0, 200 - Title.textHeight, 'center');
 
-    // TODO: Emphasize effect
-    // TODO: Level up effect/sound
     var info = this;
     manager.levelChanged.addListener(function (level) {
         info.updateLevel(level);
+        // TODO: Sound
     });
     manager.scoreChanged.addListener(function (score) {
         info.updateScore(score);
     });
-
-    // TODO: Lost effect/sound
+    manager.lost.addListener(function () {
+        info.emphasizeElement(info.scoreLabel);
+        // TODO: Sound
+    });
 }
 
 Info.font = Label.font;
@@ -492,13 +492,31 @@ Info.titleFont = Title.font;
 Info.prototype = Object.create(Entity.prototype);
 
 Info.prototype.reset = function () {
+    this.clearChildren();
     this.elements = [this.levelLabel, this.scoreLabel, this.titleElement];
     this.updateLevel(0);
     this.updateScore(0);
 };
 
+Info.prototype.emphasizeElement = function (element) {
+    var textWidth = Radius.getTextWidth(element.font, element.text)
+    var x = element.x + textWidth / 2;
+    if (element.align === 'right') {
+        x = element.x - textWidth / 2;
+    }
+
+    var entity = new Entity(x, element.y + Label.textHeight / 4);
+    entity.elements = [new Text(element.text, element.font, -textWidth / 2, -Label.textHeight / 4)];
+    this.addChild(new Ghost(entity, 350, 1.5));
+};
+
 Info.prototype.updateLevel = function (level) {
     this.levelLabel.text = 'Level: ' + level;
+
+    // Level-up effect
+    if (level > 0) {
+            this.emphasizeElement(this.levelLabel);
+    }
 };
 
 Info.prototype.updateScore = function (score) {
@@ -553,7 +571,8 @@ function Display(world, player, ender, manager) {
 
     // Player
     this.playerEntity = new Entity();
-    this.playerEntity.elements = [new Rectangle(0, 0, Display.playerSizeRelative, Display.playerSizeRelative, 'white')];
+    this.playerEntity.color = 'white';
+    this.playerEntity.elements = [new Rectangle(0, 0, Display.playerSizeRelative, Display.playerSizeRelative)];
     var centerThreshold = Math.floor(this.columns / 12);
     this.playerMoved = function (x, y) {
         // Center the view
@@ -572,8 +591,7 @@ function Display(world, player, ender, manager) {
         if (viewportChanged) {
             display.updateWalls();
             display.updateEnder();
-            // TODO: Viewport updates?
-            //display.viewportChanged.fire(display.getViewport());
+            display.viewportChanged.fire(display.vx1, display.columns);
         }
 
         // Update the player element
@@ -582,12 +600,24 @@ function Display(world, player, ender, manager) {
     };
     player.moved.addListener(this.playerMoved);
 
-    // TODO: Background
+    // Background
+    this.backgroundEntity = new Entity(-0.5, -0.5, this.columns, this.rows);
+    this.backgroundEntity.elements = [new Rectangle(0.5, 0.5, 1, 1, 'rgb(64, 64, 64)')];
+    var updateBackground = function (vx1, columns) {
+        display.backgroundEntity.x = Math.max(0, -vx1) - 0.5;
+        display.backgroundEntity.width = Math.min(columns, columns + vx1);
+    };
+
+    this.viewportChanged.addListener(updateBackground);
 
     // End effect
     manager.lost.addListener(function () {
         display.removeChild(display.playerEntity);
-        // TODO: Ghost effect
+
+        // Ghost effect
+        var ghost;
+        display.addChild(ghost = new Ghost(display.playerEntity, 2500, 3));
+        ghost.color = 'red';
     });
 }
 
@@ -598,16 +628,16 @@ Display.prototype = Object.create(Entity.prototype);
 
 Display.prototype.reset = function () {
     this.clearChildren();
+    this.addChild(this.backgroundEntity);
     this.addChild(this.wallsEntity);
     this.addChild(this.playerEntity);
     this.addChild(this.enderEntity);
-    // TODO: Background
 
     this.vx1 = 0;
     this.vy1 = 0;
     this.updateWalls();
     this.playerMoved(this.player.x, this.player.y);
-    // TODO: Update background position
+    this.viewportChanged.fire(this.vx1, this.columns);
 };
 
 Display.prototype.forEachWall = function (f, that) {

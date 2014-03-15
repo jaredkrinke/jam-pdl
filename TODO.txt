@@ -2,8 +2,7 @@
 Mouse out doesn't seem to work as expected
 
 TODO:
-Special effects
-Backgroun
 Sounds
+Summary?
 High scores?
 Tutorial?
