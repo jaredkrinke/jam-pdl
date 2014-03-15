@@ -4,6 +4,7 @@
 Constants = {
     directions: [[-1, 0], [1, 0], [0, 1], [0, -1]],
     directionValues: { left: 0, right: 1, up: 2, down: 3 },
+    title: 'Procedural Labyrinth of DEATH'
 };
 
 // N-dimensional array
@@ -424,8 +425,47 @@ Manager.prototype.update = function (ms) {
     this.level = Math.max(this.level, Math.floor(this.player.x / Manager.levelLength));
     if (this.level != lastLevel) {
         this.ender.movePeriod = Math.max(100, Ender.initialMovePeriod - this.level * Manager.levelMovePeriodDelta);
-        this.levelChanged.fire(level);
+        this.levelChanged.fire(this.level);
     }
+};
+
+function Info(manager) {
+    Entity.call(this);
+    this.levelLabel = new Text("", Info.font, -200, 90);
+    this.scoreLabel = new Text("", Info.font, 200, 90, 'right');
+    // TODO: Does the title need to wrap?
+    this.titleElement = new Text(Constants.title, Info.titleFont, 0, 150, 'center');
+
+    // TODO: Emphasize effect
+    // TODO: Level up effect/sound
+    var info = this;
+    manager.levelChanged.addListener(function (level) {
+        info.updateLevel(level);
+    });
+    manager.scoreChanged.addListener(function (score) {
+        info.updateScore(score);
+    });
+
+    // TODO: Lost effect/sound
+}
+
+Info.textHeight = 36;
+Info.font = Info.textHeight + 'px serif';
+Info.titleFont = (1.2 * Info.textHeight) + 'px serif';
+Info.prototype = Object.create(Entity.prototype);
+
+Info.prototype.reset = function () {
+    this.elements = [this.levelLabel, this.scoreLabel, this.titleElement];
+    this.updateLevel(0);
+    this.updateScore(0);
+};
+
+Info.prototype.updateLevel = function (level) {
+    this.levelLabel.text = 'Level: ' + level;
+};
+
+Info.prototype.updateScore = function (score) {
+    this.scoreLabel.text = 'Score: ' + score;
 };
 
 function Display(world, player, ender, manager) {
@@ -433,7 +473,7 @@ function Display(world, player, ender, manager) {
     this.player = player;
     this.rows = world.y2 - world.y1 + 1;
     this.columns = 640 / Display.squareSize;
-    Entity.call(this, (-this.columns / 2 + 0.5) * Display.squareSize, (-this.rows / 2 + 0.5) * Display.squareSize, Display.squareSize, Display.squareSize);
+    Entity.call(this, (-this.columns / 2 + 0.5) * Display.squareSize, (-this.rows / 2 + 0.5 - 1) * Display.squareSize, Display.squareSize, Display.squareSize);
 
     // Viewport
     this.viewportChanged = new Event();
@@ -571,6 +611,7 @@ function GameLayer() {
     this.addEntity(this.player = new Player(this.world));
     this.addEntity(this.ender = new Ender());
     this.addEntity(this.manager = new Manager(this.world, this.player, this.ender));
+    this.addEntity(this.info = new Info(this.manager));
     this.addEntity(this.display = new Display(this.world, this.player, this.ender, this.manager));
     this.reset();
 
@@ -609,6 +650,7 @@ GameLayer.prototype.reset = function () {
     this.player.reset();
     this.ender.reset();
     this.manager.reset();
+    this.info.reset();
     // TODO: Reset other stuff as it's added
 };
 
