@@ -476,19 +476,21 @@ function Info(manager) {
     var info = this;
     manager.levelChanged.addListener(function (level) {
         info.updateLevel(level);
-        // TODO: Sound
+        Info.levelUpSound.play();
     });
     manager.scoreChanged.addListener(function (score) {
         info.updateScore(score);
     });
     manager.lost.addListener(function () {
         info.emphasizeElement(info.scoreLabel);
-        // TODO: Sound
+        Info.burnSound.play();
     });
 }
 
 Info.font = Label.font;
 Info.titleFont = Title.font;
+Info.levelUpSound = new AudioClip('sounds/levelUp.mp3', false);
+Info.burnSound = new AudioClip('sounds/burn.mp3', false);
 Info.prototype = Object.create(Entity.prototype);
 
 Info.prototype.reset = function () {
@@ -566,7 +568,10 @@ function Display(world, player, ender, manager) {
     ender.moved.addListener(function () {
         display.updateEnder();
 
-        // TODO: Sound
+        var dx = player.x - ender.x;
+        if (dx <= 40) {
+            Display.enderSound.play();
+        }
     });
 
     // Player
@@ -624,6 +629,7 @@ function Display(world, player, ender, manager) {
 Display.squareSize = 20;
 Display.wallSizeRelative = 0.125;
 Display.playerSizeRelative = 0.5;
+Display.enderSound = new AudioClip('sounds/ender.mp3', true);
 Display.prototype = Object.create(Entity.prototype);
 
 Display.prototype.reset = function () {

@@ -2,7 +2,6 @@
 Mouse out doesn't seem to work as expected
 
 TODO:
-Sounds
 Summary?
 High scores?
 Tutorial?
