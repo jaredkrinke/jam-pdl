@@ -1,5 +1,4 @@
 ﻿TODO:
-Make sure all jam requirements are met
 Create gh-pages version
 Special effects
 Backgroun
