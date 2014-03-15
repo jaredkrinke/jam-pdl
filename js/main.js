@@ -378,7 +378,57 @@ World.prototype.checkMove = function (x, y, direction) {
     return true;
 };
 
-function Display(world, player, ender) {
+function Manager(world, player, ender) {
+    Entity.call(this);
+    this.world = world;
+    this.player = player;
+    this.ender = ender;
+
+    this.level = 0;
+    this.score = 0;
+    this.ended = false;
+
+    this.scoreChanged = new Event();
+    this.levelChanged = new Event();
+    this.lost = new Event();
+
+    var manager = this;
+    player.moved.addListener(function (x, y) {
+        var lastScore = manager.score;
+        manager.score = Math.max(manager.score, x);
+        if (manager.score != lastScore) {
+            manager.scoreChanged.fire(manager.score);
+        }
+    });
+};
+
+Manager.levelMovePeriodDelta = 25;
+Manager.levelLength = 50;
+Manager.prototype = Object.create(Entity.prototype);
+
+Manager.prototype.reset = function () {
+    this.level = 0;
+    this.score = 0;
+    this.ended = false;
+};
+
+Manager.prototype.update = function (ms) {
+    // Check for loss
+    if (!this.ended && this.ender.x >= this.player.x) {
+        this.lost.fire();
+        this.ended = true;
+    }
+
+    // Check for level up
+    var lastLevel = this.level;
+    this.level = Math.max(this.level, Math.floor(this.player.x / Manager.levelLength));
+    if (this.level != lastLevel) {
+        this.ender.movePeriod = Math.max(100, Ender.initialMovePeriod - this.level * Manager.levelMovePeriodDelta);
+        this.levelChanged.fire(level);
+    }
+};
+
+function Display(world, player, ender, manager) {
     this.world = world;
     this.player = player;
     this.rows = world.y2 - world.y1 + 1;
@@ -456,7 +506,12 @@ function Display(world, player, ender) {
     player.moved.addListener(this.playerMoved);
 
     // TODO: Background
-    // TODO: End effect
+
+    // End effect
+    manager.lost.addListener(function () {
+        display.removeChild(display.playerEntity);
+        // TODO: Ghost effect
+    });
 }
 
 Display.squareSize = 20;
@@ -515,8 +570,15 @@ function GameLayer() {
     this.addEntity(this.world = new World());
     this.addEntity(this.player = new Player(this.world));
     this.addEntity(this.ender = new Ender());
-    this.addEntity(this.display = new Display(this.world, this.player, this.ender));
+    this.addEntity(this.manager = new Manager(this.world, this.player, this.ender));
+    this.addEntity(this.display = new Display(this.world, this.player, this.ender, this.manager));
     this.reset();
+
+    var layer = this;
+    this.manager.lost.addListener(function () {
+        layer.player.active = false;
+        layer.paused = true;
+    });
 
     // Controls
     var player = this.player;
@@ -546,6 +608,7 @@ GameLayer.prototype.reset = function () {
     this.display.reset();
     this.player.reset();
     this.ender.reset();
+    this.manager.reset();
     // TODO: Reset other stuff as it's added
 };
 
