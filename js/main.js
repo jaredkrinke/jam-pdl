@@ -802,13 +802,18 @@ function GameLayer() {
     };
 
     this.mouseMoved = function (x, y) {
-        if (this.mouseX !== undefined && this.mouseY !== undefined) {
-            this.updateMouseTarget(x, y);
+        if (layer.mouseX !== undefined && layer.mouseY !== undefined) {
+            layer.updateMouseTarget(x, y);
         }
     };
 
+    // Update mouse target when the viewport changes
+    this.display.viewportChanged.addListener(function () {
+        layer.updateMouseTarget();
+    });
+
     this.mouseOut = function () {
-        this.clearMouseTarget();
+        layer.clearMouseTarget();
     };
 }
 
@@ -840,12 +845,12 @@ GameLayer.prototype.updateMouseTarget = function (x, y) {
     var position = Transform2D.transform(transform, [this.mouseX, this.mouseY]);
 
     this.player.setTarget(Math.round(position[0]), Math.round(position[1]));
-    // TODO: Handle viewport changes?
 };
 
 GameLayer.prototype.clearMouseTarget = function () {
     this.mouseX = undefined;
     this.mouseY = undefined;
+    this.player.clearTarget();
 };
 
 function StaticMenu(form) {
