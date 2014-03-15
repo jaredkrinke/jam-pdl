@@ -209,14 +209,16 @@ Player.prototype.update = function (ms) {
                 var dy = this.targetY - this.y;
 
                 // Move in the most prominent direction
-                var direction;
-                if (dx > dy) {
-                    direction = (dx > 0) ? Constants.directionValues.right : Constants.directionValues.left;
-                } else {
-                    direction = (dy > 0) ? Constants.directionValues.up : Constants.directionValues.down;
-                }
+                if (dx || dy) {
+                    var direction;
+                    if (Math.abs(dx) > Math.abs(dy)) {
+                        direction = (dx > 0) ? Constants.directionValues.right : Constants.directionValues.left;
+                    } else {
+                        direction = (dy > 0) ? Constants.directionValues.up : Constants.directionValues.down;
+                    }
 
-                this.move(direction);
+                    this.move(direction);
+                }
             }
 
             this.moveTimer += Player.movePeriod;
@@ -691,7 +693,7 @@ function GameLayer() {
     // Mouse controls
     this.mouseButtonPressed = function (button, pressed, x, y) {
         if (button === MouseButton.primary) {
-            if (paused) {
+            if (layer.paused) {
                 // Exit after pause and press
                 if (pressed) {
                     Radius.popLayer();
@@ -704,6 +706,16 @@ function GameLayer() {
                 }
             }
         }
+    };
+
+    this.mouseMoved = function (x, y) {
+        if (this.mouseX !== undefined && this.mouseY !== undefined) {
+            this.updateMouseTarget(x, y);
+        }
+    };
+
+    this.mouseOut = function () {
+        this.clearMouseTarget();
     };
 }
 
