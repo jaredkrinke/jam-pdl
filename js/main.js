@@ -564,13 +564,13 @@ Display.prototype.reset = function () {
     this.addChild(this.wallsEntity);
     this.addChild(this.playerEntity);
     this.addChild(this.enderEntity);
-    // TODO: Ender, player, background
+    // TODO: Background
 
     this.vx1 = 0;
     this.vy1 = 0;
     this.updateWalls();
     this.playerMoved(this.player.x, this.player.y);
-    // TODO: Update player and background positions
+    // TODO: Update background position
 };
 
 Display.prototype.forEachWall = function (f, that) {
@@ -605,8 +605,6 @@ function GameLayer() {
     var paused = false;
     this.paused = paused;
 
-    // TODO: End game, other entities
-
     this.addEntity(this.world = new World());
     this.addEntity(this.player = new Player(this.world));
     this.addEntity(this.ender = new Ender());
@@ -636,8 +634,6 @@ function GameLayer() {
         right: createDirectionHandler('right'),
         up: createDirectionHandler('up'),
         down: createDirectionHandler('down'),
-
-        // TODO: enter/escape
     };
 }
 
