@@ -1,8 +1,9 @@
 ﻿TODO:
-Menus
 Mouse/touch controls
 Make sure all jam requirements are met
 Create gh-pages version
 Special effects
 Backgroun
 Sounds
+High scores?
+Tutorial?

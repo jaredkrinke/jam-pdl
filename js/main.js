@@ -7,6 +7,13 @@ Constants = {
     title: 'Procedural Labyrinth of DEATH'
 };
 
+// Set UI font and color
+Label.textHeight = 36;
+Label.font = Label.textHeight + ' serif';
+Title.textHeight = Label.textHeight * 1.2;
+Title.font = Title.textHeight + ' serif';
+Button.focusedColor = 'red';
+
 // N-dimensional array
 function NArray(dimensions) {
     this.dimensions = dimensions;
@@ -434,7 +441,7 @@ function Info(manager) {
     this.levelLabel = new Text("", Info.font, -200, 90);
     this.scoreLabel = new Text("", Info.font, 200, 90, 'right');
     // TODO: Does the title need to wrap?
-    this.titleElement = new Text(Constants.title, Info.titleFont, 0, 150, 'center');
+    this.titleElement = new Text(Constants.title, Info.titleFont, 0, 200 - Title.textHeight, 'center');
 
     // TODO: Emphasize effect
     // TODO: Level up effect/sound
@@ -449,9 +456,8 @@ function Info(manager) {
     // TODO: Lost effect/sound
 }
 
-Info.textHeight = 36;
-Info.font = Info.textHeight + 'px serif';
-Info.titleFont = (1.2 * Info.textHeight) + 'px serif';
+Info.font = Label.font;
+Info.titleFont = Title.font;
 Info.prototype = Object.create(Entity.prototype);
 
 Info.prototype.reset = function () {
@@ -629,11 +635,27 @@ function GameLayer() {
         };
     };
 
+    var activateHandler = function (pressed) {
+        if (pressed && layer.paused) {
+            Radius.popLayer();
+        }
+    };
+
+    var exitHandler = function (pressed) {
+        if (pressed) {
+            Radius.popLayer();
+        }
+    };
+
     this.keyPressedHandlers = {
         left: createDirectionHandler('left'),
         right: createDirectionHandler('right'),
         up: createDirectionHandler('up'),
         down: createDirectionHandler('down'),
+
+        enter: activateHandler,
+        space: activateHandler,
+        escape: exitHandler,
     };
 }
 
@@ -650,7 +672,50 @@ GameLayer.prototype.reset = function () {
     // TODO: Reset other stuff as it's added
 };
 
+function MainMenu() {
+    this.gameLayer = new GameLayer();
+
+    var audioOptions = ['On', 'Muted'];
+    var audioChoice = new Choice('Audio', audioOptions, Audio.muted ? 1 : 0);
+    audioChoice.choiceChanged.addListener(function (text) {
+        Audio.setMuted(text === audioOptions[1]);
+    });
+
+    var mainMenu = this;
+    var options = [
+        new Separator(),
+        new Button('Start New Game', function () { mainMenu.startNewGame(); }),
+        new Separator(),
+        audioChoice,
+    ];
+
+    // Add the "fullscreen" choice, if necessary
+    var fullscreenOnly = RadiusSettings && RadiusSettings.fullscreenOnly;
+    if (!fullscreenOnly) {
+        var fullscreenOptions = ['Off', 'On'];
+        var fullscreenChoice = new Choice('Fullscreen', fullscreenOptions);
+        fullscreenChoice.choiceChanged.addListener(function (text) {
+            Radius.setFullscreen(text === fullscreenOptions[1]);
+        });
+        options.splice(3, 0, fullscreenChoice);
+    }
+
+    // TODO: High scores menu?
+
+    FormLayer.call(this, new NestedGridForm(1, [
+        new Title(Constants.title),
+        new NestedFlowForm(1, options)
+    ]));
+}
+
+MainMenu.prototype = Object.create(FormLayer.prototype);
+
+MainMenu.prototype.startNewGame = function () {
+    this.gameLayer.reset();
+    Radius.pushLayer(this.gameLayer);
+};
+
 window.addEventListener('DOMContentLoaded', function () {
     Radius.initialize(document.getElementById('canvas'));
-    Radius.start(new GameLayer());
+    Radius.start(new MainMenu());
 });
