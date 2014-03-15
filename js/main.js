@@ -571,7 +571,8 @@ function Display(world, player, ender, manager) {
 
     // Player
     this.playerEntity = new Entity();
-    this.playerEntity.elements = [new Rectangle(0, 0, Display.playerSizeRelative, Display.playerSizeRelative, 'white')];
+    this.playerEntity.color = 'white';
+    this.playerEntity.elements = [new Rectangle(0, 0, Display.playerSizeRelative, Display.playerSizeRelative)];
     var centerThreshold = Math.floor(this.columns / 12);
     this.playerMoved = function (x, y) {
         // Center the view
@@ -590,8 +591,7 @@ function Display(world, player, ender, manager) {
         if (viewportChanged) {
             display.updateWalls();
             display.updateEnder();
-            // TODO: Viewport updates?
-            //display.viewportChanged.fire(display.getViewport());
+            display.viewportChanged.fire(display.vx1, display.columns);
         }
 
         // Update the player element
@@ -600,7 +600,15 @@ function Display(world, player, ender, manager) {
     };
     player.moved.addListener(this.playerMoved);
 
-    // TODO: Background
+    // Background
+    this.backgroundEntity = new Entity(-0.5, -0.5, this.columns, this.rows);
+    this.backgroundEntity.elements = [new Rectangle(0.5, 0.5, 1, 1, 'rgb(64, 64, 64)')];
+    var updateBackground = function (vx1, columns) {
+        display.backgroundEntity.x = Math.max(0, -vx1) - 0.5;
+        display.backgroundEntity.width = Math.min(columns, columns + vx1);
+    };
+
+    this.viewportChanged.addListener(updateBackground);
 
     // End effect
     manager.lost.addListener(function () {
@@ -609,7 +617,7 @@ function Display(world, player, ender, manager) {
         // Ghost effect
         var ghost;
         display.addChild(ghost = new Ghost(display.playerEntity, 2500, 3));
-        ghost.elements[0].color = 'red';
+        ghost.color = 'red';
     });
 }
 
@@ -620,16 +628,16 @@ Display.prototype = Object.create(Entity.prototype);
 
 Display.prototype.reset = function () {
     this.clearChildren();
+    this.addChild(this.backgroundEntity);
     this.addChild(this.wallsEntity);
     this.addChild(this.playerEntity);
     this.addChild(this.enderEntity);
-    // TODO: Background
 
     this.vx1 = 0;
     this.vy1 = 0;
     this.updateWalls();
     this.playerMoved(this.player.x, this.player.y);
-    // TODO: Update background position
+    this.viewportChanged.fire(this.vx1, this.columns);
 };
 
 Display.prototype.forEachWall = function (f, that) {
