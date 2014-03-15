@@ -1,5 +1,7 @@
-﻿TODO:
-Create gh-pages version
+﻿Bugs:
+Mouse out doesn't seem to work as expected
+
+TODO:
 Special effects
 Backgroun
 Sounds
