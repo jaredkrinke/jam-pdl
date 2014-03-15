@@ -14,6 +14,23 @@ Title.textHeight = Label.textHeight * 1.2;
 Title.font = Title.textHeight + ' serif';
 Button.focusedColor = 'red';
 
+function Timer(period, f) {
+    Entity.call(this);
+    this.period = period;
+    this.f = f;
+    this.timer = 0;
+}
+
+Timer.prototype = Object.create(Entity.prototype);
+
+Timer.prototype.update = function (ms) {
+    this.timer += ms;
+    if (this.timer >= this.period) {
+        this.dead = true;
+        this.f.call();
+    }
+};
+
 // N-dimensional array
 function NArray(dimensions) {
     this.dimensions = dimensions;
@@ -417,6 +434,18 @@ World.prototype.checkMove = function (x, y, direction) {
     return true;
 };
 
+HighScore = {
+    key: 'highScore',
+
+    get: function () {
+        return parseInt(localStorage[HighScore.key]) || 0;
+    },
+
+    set: function (score) {
+        localStorage[HighScore.key] = score;
+    }
+};
+
 function Manager(world, player, ender) {
     Entity.call(this);
     this.world = world;
@@ -430,6 +459,7 @@ function Manager(world, player, ender) {
     this.scoreChanged = new Event();
     this.levelChanged = new Event();
     this.lost = new Event();
+    this.newHighScore = new Event();
 
     var manager = this;
     player.moved.addListener(function (x, y) {
@@ -456,6 +486,12 @@ Manager.prototype.update = function (ms) {
     if (!this.ended && this.ender.x >= this.player.x) {
         this.lost.fire();
         this.ended = true;
+
+        // Check for high score
+        if (this.score > HighScore.get()) {
+            HighScore.set(this.score);
+            this.newHighScore.fire();
+        }
     }
 
     // Check for level up
@@ -484,6 +520,27 @@ function Info(manager) {
     manager.lost.addListener(function () {
         info.emphasizeElement(info.scoreLabel);
         Info.burnSound.play();
+    });
+
+
+    // High score message
+    var highScoreMessage = new Entity();
+    var text = 'New high score!';
+    var textWidth = Radius.getTextWidth(Label.font, text);
+    var padding = 10;
+    var background = new Rectangle(0, 0, textWidth + 2 * padding, Label.textHeight + 2 * padding, 'DarkGray');
+    background.opacity = 0.9;
+    highScoreMessage.elements = [
+        background,
+        new Text(text, Label.font, 0, 0, 'center', 'middle')
+    ];
+    manager.newHighScore.addListener(function () {
+        // Show a message about the high score
+        info.addChild(new Timer(1000, function () {
+            Info.levelUpSound.play();
+            info.addChild(highScoreMessage);
+            info.addChild(new Ghost(highScoreMessage, 400, 3));
+        }));
     });
 }
 
@@ -682,8 +739,8 @@ function GameLayer() {
     this.addEntity(this.player = new Player(this.world));
     this.addEntity(this.ender = new Ender());
     this.addEntity(this.manager = new Manager(this.world, this.player, this.ender));
-    this.addEntity(this.info = new Info(this.manager));
     this.addEntity(this.display = new Display(this.world, this.player, this.ender, this.manager));
+    this.addEntity(this.info = new Info(this.manager));
     this.reset();
 
     var layer = this;
@@ -766,7 +823,6 @@ GameLayer.prototype.reset = function () {
     this.manager.reset();
     this.info.reset();
     this.display.reset();
-    // TODO: Reset other stuff as it's added
 };
 
 GameLayer.prototype.updateMouseTarget = function (x, y) {
@@ -777,7 +833,6 @@ GameLayer.prototype.updateMouseTarget = function (x, y) {
     }
 
     // Update the target (using a transformation in game coordinates
-    // TODO: Cache the transformation?
     var transform = Transform2D.createIdentity();
     Transform2D.translate(transform, -this.display.x, -this.display.y, transform);
     Transform2D.scale(transform, 1 / this.display.width, 1 / this.display.height, transform);
@@ -785,12 +840,47 @@ GameLayer.prototype.updateMouseTarget = function (x, y) {
     var position = Transform2D.transform(transform, [this.mouseX, this.mouseY]);
 
     this.player.setTarget(Math.round(position[0]), Math.round(position[1]));
-    // TODO: Handle viewport changes!
+    // TODO: Handle viewport changes?
 };
 
 GameLayer.prototype.clearMouseTarget = function () {
     this.mouseX = undefined;
     this.mouseY = undefined;
+};
+
+function StaticMenu(form) {
+    FormLayer.call(this, form);
+}
+
+StaticMenu.prototype = Object.create(FormLayer.prototype);
+
+StaticMenu.prototype.mouseButtonPressed = function (button, pressed, x, y) {
+    if (pressed) {
+        Radius.popLayer();
+    }
+};
+
+StaticMenu.prototype.keyPressed = function (key, pressed) {
+    if (pressed) {
+        Radius.popLayer();
+    }
+};
+
+function HighScoreMenu() {
+    this.label = new Label('', 'center');
+
+    StaticMenu.call(this, new NestedGridForm(1, [
+        new Title('High Score'),
+        new Separator(),
+        this.label
+    ]));
+}
+
+HighScoreMenu.prototype = Object.create(StaticMenu.prototype);
+
+HighScoreMenu.prototype.formShown = function () {
+    // Update the score
+    this.label.setText('' + HighScore.get());
 };
 
 function MainMenu() {
@@ -802,12 +892,15 @@ function MainMenu() {
         Audio.setMuted(text === audioOptions[1]);
     });
 
+    var highScoreMenu = new HighScoreMenu();
     var mainMenu = this;
     var options = [
         new Separator(),
         new Button('Start New Game', function () { mainMenu.startNewGame(); }),
         new Separator(),
         audioChoice,
+        new Separator(),
+        new Button('Show High Score', function () { Radius.pushLayer(highScoreMenu); }),
     ];
 
     // Add the "fullscreen" choice, if necessary
@@ -820,8 +913,6 @@ function MainMenu() {
         });
         options.splice(3, 0, fullscreenChoice);
     }
-
-    // TODO: High scores menu?
 
     FormLayer.call(this, new NestedGridForm(1, [
         new Title(Constants.title),

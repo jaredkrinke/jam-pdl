@@ -1,7 +1,2 @@
 ﻿Bugs:
 Mouse out doesn't seem to work as expected
-
-TODO:
-Summary?
-High scores?
-Tutorial?
