@@ -131,6 +131,7 @@ Player.prototype.reset = function () {
     this.active = true;
     this.x = 0;
     this.y = 0;
+    this.clearTarget();
 };
 
 Player.prototype.move = function (direction) {
@@ -149,7 +150,7 @@ Player.prototype.move = function (direction) {
 };
 
 Player.prototype.checkAnyDirectionPressed = function () {
-    return this.directionsPressed.length > 0;
+    return this.directionsPressed.length > 0 || (this.targetX !== undefined && this.targetY !== undefined);
 };
 
 Player.prototype.directionPressed = function (direction, pressed) {
@@ -171,23 +172,51 @@ Player.prototype.directionPressed = function (direction, pressed) {
     }
 };
 
+// Mouse/touch controls
+Player.prototype.setTarget = function (x, y) {
+    this.targetX = x;
+    this.targetY = y;
+};
+
+Player.prototype.clearTarget = function () {
+    this.targetX = undefined;
+    this.targetY = undefined;
+};
+
 Player.prototype.update = function (ms) {
     if (this.active && this.checkAnyDirectionPressed()) {
         this.moveTimer -= ms;
 
         while (this.moveTimer <= 0) {
-            // Move the most recent possible non-conflicting direction
-            var moved = false;
-            var triedHorizontal = false;
-            var triedVertical = false;
-            for (var i = this.directionsPressed.length - 1; !moved && i >= 0; i--) {
-                var direction = this.directionsPressed[i];
-                var offsets = Constants.directions[direction];
-                if ((!triedHorizontal && !offsets[0]) || (!triedVertical && !offsets[1])) {
-                    moved = this.move(this.directionsPressed[i]);
-                    triedHorizontal = triedHorizontal || offsets[0];
-                    triedVertical = triedVertical || offsets[1];
+            if (this.targetX === undefined && this.targetY === undefined) {
+                // Use keyboard controls
+                // Move the most recent possible non-conflicting direction
+                var moved = false;
+                var triedHorizontal = false;
+                var triedVertical = false;
+                for (var i = this.directionsPressed.length - 1; !moved && i >= 0; i--) {
+                    var direction = this.directionsPressed[i];
+                    var offsets = Constants.directions[direction];
+                    if ((!triedHorizontal && !offsets[0]) || (!triedVertical && !offsets[1])) {
+                        moved = this.move(this.directionsPressed[i]);
+                        triedHorizontal = triedHorizontal || offsets[0];
+                        triedVertical = triedVertical || offsets[1];
+                    }
                 }
+            } else {
+                // Use mouse/touch controls
+                var dx = this.targetX - this.x;
+                var dy = this.targetY - this.y;
+
+                // Move in the most prominent direction
+                var direction;
+                if (dx > dy) {
+                    direction = (dx > 0) ? Constants.directionValues.right : Constants.directionValues.left;
+                } else {
+                    direction = (dy > 0) ? Constants.directionValues.up : Constants.directionValues.down;
+                }
+
+                this.move(direction);
             }
 
             this.moveTimer += Player.movePeriod;
@@ -647,6 +676,7 @@ function GameLayer() {
         }
     };
 
+    // Keyboard controls
     this.keyPressedHandlers = {
         left: createDirectionHandler('left'),
         right: createDirectionHandler('right'),
@@ -657,12 +687,31 @@ function GameLayer() {
         space: activateHandler,
         escape: exitHandler,
     };
+
+    // Mouse controls
+    this.mouseButtonPressed = function (button, pressed, x, y) {
+        if (button === MouseButton.primary) {
+            if (paused) {
+                // Exit after pause and press
+                if (pressed) {
+                    Radius.popLayer();
+                }
+            } else {
+                if (pressed) {
+                    layer.updateMouseTarget(x, y);
+                } else {
+                    layer.clearMouseTarget();
+                }
+            }
+        }
+    };
 }
 
 GameLayer.prototype = Object.create(Layer.prototype);
 
 GameLayer.prototype.reset = function () {
     this.paused = false;
+    this.clearMouseTarget();
     this.world.reset();
     this.player.reset();
     this.ender.reset();
@@ -670,6 +719,30 @@ GameLayer.prototype.reset = function () {
     this.info.reset();
     this.display.reset();
     // TODO: Reset other stuff as it's added
+};
+
+GameLayer.prototype.updateMouseTarget = function (x, y) {
+    // Get new values, if supplied
+    if (x !== undefined || y !== undefined) {
+        this.mouseX = x;
+        this.mouseY = y;
+    }
+
+    // Update the target (using a transformation in game coordinates
+    // TODO: Cache the transformation?
+    var transform = Transform2D.createIdentity();
+    Transform2D.translate(transform, -this.display.x, -this.display.y, transform);
+    Transform2D.scale(transform, 1 / this.display.width, 1 / this.display.height, transform);
+    Transform2D.translate(transform, this.display.vx1, this.display.vy1, transform);
+    var position = Transform2D.transform(transform, [this.mouseX, this.mouseY]);
+
+    this.player.setTarget(Math.round(position[0]), Math.round(position[1]));
+    // TODO: Handle viewport changes!
+};
+
+GameLayer.prototype.clearMouseTarget = function () {
+    this.mouseX = undefined;
+    this.mouseY = undefined;
 };
 
 function MainMenu() {
