@@ -664,11 +664,11 @@ GameLayer.prototype = Object.create(Layer.prototype);
 GameLayer.prototype.reset = function () {
     this.paused = false;
     this.world.reset();
-    this.display.reset();
     this.player.reset();
     this.ender.reset();
     this.manager.reset();
     this.info.reset();
+    this.display.reset();
     // TODO: Reset other stuff as it's added
 };
 
